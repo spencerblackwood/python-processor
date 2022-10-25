@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
 PythonProcessor::PythonProcessor()
-    : GenericProcessor("Plugin Name")
+    : GenericProcessor("Python Processor")
 {
 
 }
