@@ -20,12 +20,71 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "ProcessorPluginEditor.h"
+#include "PythonProcessor.h"
 
-ProcessorPluginEditor::ProcessorPluginEditor(GenericProcessor* parentNode) 
-    : GenericEditor(parentNode)
+#include "PythonProcessorEditor.h"
+
+
+PythonProcessor::PythonProcessor()
+    : GenericProcessor("Plugin Name")
 {
 
-    desiredWidth = 150;
+}
+
+
+PythonProcessor::~PythonProcessor()
+{
+
+}
+
+
+AudioProcessorEditor* PythonProcessor::createEditor()
+{
+    editor = std::make_unique<PythonProcessorEditor>(this);
+    return editor.get();
+}
+
+
+void PythonProcessor::updateSettings()
+{
+
+
+}
+
+
+void PythonProcessor::process(AudioBuffer<float>& buffer)
+{
+
+    checkForEvents(true);
+
+}
+
+
+void PythonProcessor::handleTTLEvent(TTLEventPtr event)
+{
+
+}
+
+
+void PythonProcessor::handleSpike(SpikePtr event)
+{
+
+}
+
+
+void PythonProcessor::handleBroadcastMessage(String message)
+{
+
+}
+
+
+void PythonProcessor::saveCustomParametersToXml(XmlElement* parentElement)
+{
+
+}
+
+
+void PythonProcessor::loadCustomParametersFromXml(XmlElement* parentElement)
+{
 
 }

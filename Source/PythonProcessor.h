@@ -20,20 +20,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSORPLUGIN_H_DEFINED
-#define PROCESSORPLUGIN_H_DEFINED
+#ifndef PYTHONPROCESSOR_H_DEFINED
+#define PYTHONPROCESSOR_H_DEFINED
 
 #include <ProcessorHeaders.h>
 
 
-class ProcessorPlugin : public GenericProcessor
+class PythonProcessor : public GenericProcessor
 {
 public:
 	/** The class constructor, used to initialize any members. */
-	ProcessorPlugin();
+	PythonProcessor();
 
 	/** The class destructor, used to deallocate memory */
-	~ProcessorPlugin();
+	~PythonProcessor();
 
 	/** If the processor has a custom editor, this method must be defined to instantiate it. */
 	AudioProcessorEditor* createEditor() override;

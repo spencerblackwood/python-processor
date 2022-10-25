@@ -20,25 +20,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef PROCESSORPLUGINEDITOR_H_DEFINED
-#define PROCESSORPLUGINEDITOR_H_DEFINED
+#ifndef PYTHONPROCESSOREDITOR_H_DEFINED
+#define PYTHONPROCESSOREDITOR_H_DEFINED
 
 #include <EditorHeaders.h>
 
-class ProcessorPluginEditor : public GenericEditor
+class PythonProcessorEditor : public GenericEditor
 {
 public:
 
 	/** Constructor */
-	ProcessorPluginEditor(GenericProcessor* parentNode);
+	PythonProcessorEditor(GenericProcessor* parentNode);
 
 	/** Destructor */
-	~ProcessorPluginEditor() { }
+	~PythonProcessorEditor() { }
 
 private:
 
 	/** Generates an assertion if this class leaks */
-	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ProcessorPluginEditor);
+	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PythonProcessorEditor);
 };
 
-#endif // PROCESSORPLUGINEDITOR_H_DEFINED
+#endif // PythonProcessorEDITOR_H_DEFINED
