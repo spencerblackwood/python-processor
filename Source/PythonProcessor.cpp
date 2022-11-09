@@ -20,17 +20,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "PythonProcessor.h"
+#include <pybind11/embed.h>
 
+#include "PythonProcessor.h"
 #include "PythonProcessorEditor.h"
 
+namespace py = pybind11;
+py::scoped_interpreter guard{};
+py::gil_scoped_release release;
 
 PythonProcessor::PythonProcessor()
     : GenericProcessor("Python Processor")
 {
 
 }
-
 
 PythonProcessor::~PythonProcessor()
 {
@@ -47,16 +50,29 @@ AudioProcessorEditor* PythonProcessor::createEditor()
 
 void PythonProcessor::updateSettings()
 {
+    py::gil_scoped_acquire acquire;
 
+    // get module info (change to get from editor)
+    char* module_dir = "c:/users/blackwood.s/documents/python scripts";
+    char* module_name = "calc2";
 
+    // add module directory to sys.path
+    py::module_ sys = py::module_::import("sys");
+    py::object append = sys.attr("path").attr("append");
+    append(module_dir);
+
+    py::object Processor = py::module_::import(module_name).attr("PyProcessor");
+    pyProcessor = Processor();
 }
 
 
 void PythonProcessor::process(AudioBuffer<float>& buffer)
 {
-
     checkForEvents(true);
 
+    py::gil_scoped_acquire acquire;
+    int result = pyProcessor.attr("process")().cast<int>();
+    LOGC(result);
 }
 
 

@@ -24,10 +24,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #define PYTHONPROCESSOR_H_DEFINED
 
 #include <ProcessorHeaders.h>
+#include <pybind11/embed.h>
 
 
 class PythonProcessor : public GenericProcessor
 {
+
+private:
+	pybind11::object pyProcessor;
+
 public:
 	/** The class constructor, used to initialize any members. */
 	PythonProcessor();
