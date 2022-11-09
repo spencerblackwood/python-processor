@@ -28,4 +28,5 @@ PythonProcessorEditor::PythonProcessorEditor(GenericProcessor* parentNode)
 
     desiredWidth = 150;
 
+
 }

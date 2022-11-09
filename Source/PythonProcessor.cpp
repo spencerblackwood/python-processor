@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <pybind11/embed.h>
+#include <pybind11/numpy.h>
 
 #include "PythonProcessor.h"
 #include "PythonProcessorEditor.h"
@@ -63,6 +64,7 @@ void PythonProcessor::updateSettings()
 
     py::object Processor = py::module_::import(module_name).attr("PyProcessor");
     pyProcessor = Processor();
+
 }
 
 
@@ -71,8 +73,32 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
     checkForEvents(true);
 
     py::gil_scoped_acquire acquire;
-    int result = pyProcessor.attr("process")().cast<int>();
-    LOGC(result);
+
+    for (auto stream : getDataStreams())
+    {
+
+        if ((*stream)["enable_stream"])
+        {
+
+            const uint16 streamId = stream->getStreamId();
+
+            const int numSamples = getNumSamplesInBlock(streamId);
+            const int numChannels = stream->getChannelCount();
+
+            float * bufferPointer = buffer.getWritePointer(0);
+
+            auto arr = py::array_t<float>(
+                { numChannels, numSamples }, // Dimensions
+                { sizeof(float) * numSamples, sizeof(float) }, // Strides
+                bufferPointer); // Pointer
+
+            int result = pyProcessor.attr("process")(arr).cast<int>();
+            LOGC("True:")
+            LOGC(numChannels * numSamples);
+            LOGC("Estimate:")
+            LOGC(result);
+        }
+    }
 }
 
 
