@@ -25,7 +25,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <EditorHeaders.h>
 
-class PythonProcessorEditor : public GenericEditor
+class PythonProcessorEditor :
+	public GenericEditor
 {
 public:
 
@@ -36,6 +37,9 @@ public:
 	~PythonProcessorEditor() { }
 
 private:
+
+	ScopedPointer<Label> dataPathLabel;
+	ScopedPointer<Button> dataPathButton;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PythonProcessorEditor);

@@ -27,13 +27,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "PythonProcessorEditor.h"
 
 namespace py = pybind11;
+
 py::scoped_interpreter guard{};
 py::gil_scoped_release release;
 
 PythonProcessor::PythonProcessor()
     : GenericProcessor("Python Processor")
 {
-
+    
 }
 
 PythonProcessor::~PythonProcessor()
@@ -51,20 +52,23 @@ AudioProcessorEditor* PythonProcessor::createEditor()
 
 void PythonProcessor::updateSettings()
 {
+    // Do this later...
+    //addTTLChannel("Python Processor Output");
+
     py::gil_scoped_acquire acquire;
 
-    // get module info (change to get from editor)
+    // Get module info (change to get from editor)
     char* module_dir = "c:/users/blackwood.s/documents/python scripts";
-    char* module_name = "calc2";
+    char* module_name = "py_processor";
 
-    // add module directory to sys.path
+    // Add module directory to sys.path
     py::module_ sys = py::module_::import("sys");
     py::object append = sys.attr("path").attr("append");
     append(module_dir);
-
     py::object Processor = py::module_::import(module_name).attr("PyProcessor");
-    pyProcessor = Processor();
 
+    // Make processor object
+    pyProcessor = Processor();
 }
 
 
@@ -85,18 +89,41 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
             const int numSamples = getNumSamplesInBlock(streamId);
             const int numChannels = stream->getChannelCount();
 
-            float * bufferPointer = buffer.getWritePointer(0);
+            py::array_t<float> numpyArray = py::array_t<float>({ numChannels, numSamples });
 
-            auto arr = py::array_t<float>(
-                { numChannels, numSamples }, // Dimensions
-                { sizeof(float) * numSamples, sizeof(float) }, // Strides
-                bufferPointer); // Pointer
+            // Read into numpy array
+            for (int i = 0; i < numChannels; ++i) {
+                int globalChannelIndex = getGlobalChannelIndex(stream->getStreamId(), i);
 
-            int result = pyProcessor.attr("process")(arr).cast<int>();
-            LOGC("True:")
-            LOGC(numChannels * numSamples);
-            LOGC("Estimate:")
-            LOGC(result);
+                const float* bufferChannelPtr = buffer.getReadPointer(globalChannelIndex);
+                float* numpyChannelPtr = numpyArray.mutable_data(i, 0);
+                memcpy(numpyChannelPtr, bufferChannelPtr, sizeof(float) * numSamples);
+            }
+
+            // Call python script
+            pyProcessor.attr("process")(numpyArray);
+
+            // Write from numpy array?
+            for (int i = 0; i < numChannels; ++i) {
+                int globalChannelIndex = getGlobalChannelIndex(stream->getStreamId(), i);
+
+                float* bufferChannelPtr = buffer.getWritePointer(globalChannelIndex);
+                const float* numpyChannelPtr = numpyArray.data(i, 0);
+                memcpy(bufferChannelPtr, numpyChannelPtr, sizeof(float) * numSamples);
+            }
+
+
+            //    numpyArray = py::array_t<float>(
+            //        { numChannels, numSamples }, // Dimensions
+            //        { sizeof(float) * bufferSize, sizeof(float) }, // Strides
+            //        firstChannelPtr); // Pointer
+            //}
+            //else if (numChannels == 1) {
+            //    numpyArray = py::array_t<float>(
+            //        { numSamples }, // Dimensions
+            //        { sizeof(float) }, // Strides
+            //        firstChannelPtr); // Pointer
+            //}
         }
     }
 }

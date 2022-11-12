@@ -25,8 +25,5 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 PythonProcessorEditor::PythonProcessorEditor(GenericProcessor* parentNode) 
     : GenericEditor(parentNode)
 {
-
     desiredWidth = 150;
-
-
 }
