@@ -25,21 +25,54 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <EditorHeaders.h>
 
-class PythonProcessorEditor :
-	public GenericEditor
+class PythonProcessor;
+
+/** Custom parameter editor for changing the script path*/
+class ScriptPathButton : public ParameterEditor,
+	public Button::Listener
 {
 public:
 
 	/** Constructor */
-	PythonProcessorEditor(GenericProcessor* parentNode);
+	ScriptPathButton(Parameter* param);
+
+	/** Destructor*/
+	virtual ~ScriptPathButton() { }
+
+	/** Respond to trigger button clicks*/
+	void buttonClicked(Button* label) override;
+
+	/** Update view of the parameter editor component*/
+	void updateView() {};
+
+	/** Sets component layout*/
+	void resized() override;
+
+private:
+	std::unique_ptr<TextButton> triggerButton;
+};
+
+class PythonProcessorEditor :
+	public GenericEditor,
+	public Button::Listener
+{
+public:
+
+	/** Constructor */
+	PythonProcessorEditor(PythonProcessor* parentNode);
 
 	/** Destructor */
 	~PythonProcessorEditor() { }
 
-private:
+	/** Respond to button clicks*/
+	void buttonClicked(Button* button);
 
-	ScopedPointer<Label> dataPathLabel;
-	ScopedPointer<Button> dataPathButton;
+private:
+	PythonProcessor* pythonProcessor;
+
+	ScopedPointer<Label> scriptPathLabel;
+	ScopedPointer<Button> scriptPathButton;
+	ScopedPointer<Button> reimportButton;
 
 	/** Generates an assertion if this class leaks */
 	JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PythonProcessorEditor);

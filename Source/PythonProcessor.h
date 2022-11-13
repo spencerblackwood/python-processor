@@ -26,12 +26,21 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <ProcessorHeaders.h>
 #include <pybind11/embed.h>
 
+namespace py = pybind11;
 
 class PythonProcessor : public GenericProcessor
 {
 
 private:
-	pybind11::object pyProcessor;
+	/** Instance of user-defined python class*/
+	py::object pyProcessorObject;
+
+	/** String file path to python script */
+	String scriptPath;
+
+	/** True if there is an active module loaded */
+	bool isActive;
+
 
 public:
 	/** The class constructor, used to initialize any members. */
@@ -75,6 +84,19 @@ public:
 	/** Load custom settings from XML. This method is not needed to load the state of
 		Parameter objects*/
 	void loadCustomParametersFromXml(XmlElement* parentElement) override;
+
+	/** Called at the start of acquisition.*/
+	bool startAcquisition() override;
+
+	/** Called when acquisition is stopped.*/
+	bool stopAcquisition() override;
+
+	/** Sets the file path of the python Script */
+	void setScriptPath(String);
+
+	/** Imports the python script from scriptPath and rebuilds the processor object. Returns false
+		if the import fails*/
+	bool importModule();
 
 };
 

@@ -20,7 +20,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <pybind11/embed.h>
+#include <filesystem>
 #include <pybind11/numpy.h>
 
 #include "PythonProcessor.h"
@@ -34,7 +34,8 @@ py::gil_scoped_release release;
 PythonProcessor::PythonProcessor()
     : GenericProcessor("Python Processor")
 {
-    
+    scriptPath = "";
+    isActive = false;
 }
 
 PythonProcessor::~PythonProcessor()
@@ -52,25 +53,8 @@ AudioProcessorEditor* PythonProcessor::createEditor()
 
 void PythonProcessor::updateSettings()
 {
-    // Do this later...
-    //addTTLChannel("Python Processor Output");
-
-    py::gil_scoped_acquire acquire;
-
-    // Get module info (change to get from editor)
-    char* module_dir = "c:/users/blackwood.s/documents/python scripts";
-    char* module_name = "py_processor";
-
-    // Add module directory to sys.path
-    py::module_ sys = py::module_::import("sys");
-    py::object append = sys.attr("path").attr("append");
-    append(module_dir);
-    py::object Processor = py::module_::import(module_name).attr("PyProcessor");
-
-    // Make processor object
-    pyProcessor = Processor();
+    importModule();
 }
-
 
 void PythonProcessor::process(AudioBuffer<float>& buffer)
 {
@@ -101,7 +85,7 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
             }
 
             // Call python script
-            pyProcessor.attr("process")(numpyArray);
+            pyProcessorObject.attr("process")(numpyArray);
 
             // Write from numpy array?
             for (int i = 0; i < numChannels; ++i) {
@@ -111,19 +95,6 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
                 const float* numpyChannelPtr = numpyArray.data(i, 0);
                 memcpy(bufferChannelPtr, numpyChannelPtr, sizeof(float) * numSamples);
             }
-
-
-            //    numpyArray = py::array_t<float>(
-            //        { numChannels, numSamples }, // Dimensions
-            //        { sizeof(float) * bufferSize, sizeof(float) }, // Strides
-            //        firstChannelPtr); // Pointer
-            //}
-            //else if (numChannels == 1) {
-            //    numpyArray = py::array_t<float>(
-            //        { numSamples }, // Dimensions
-            //        { sizeof(float) }, // Strides
-            //        firstChannelPtr); // Pointer
-            //}
         }
     }
 }
@@ -155,5 +126,68 @@ void PythonProcessor::saveCustomParametersToXml(XmlElement* parentElement)
 
 void PythonProcessor::loadCustomParametersFromXml(XmlElement* parentElement)
 {
+
+}
+
+bool PythonProcessor::startAcquisition() 
+{
+    py::gil_scoped_acquire acquire;
+    pyProcessorObject.attr("start_acquisition")();
+    return true;
+}
+
+bool PythonProcessor::stopAcquisition() {
+    py::gil_scoped_acquire acquire;
+    pyProcessorObject.attr("stop_acquisition")();
+    return true;
+}
+
+void PythonProcessor::setScriptPath(String path)
+{
+    scriptPath = path;
+}
+
+
+bool PythonProcessor::importModule()
+{
+
+    if (scriptPath == "")
+    {
+        return false;
+    }
+
+    py::gil_scoped_acquire acquire;
+
+    LOGC("Importing Python module from ", scriptPath.toRawUTF8());
+
+    try
+    {
+        // Get module info (change to get from editor)
+        std::filesystem::path path(scriptPath.toRawUTF8());
+        std::string module_dir = path.parent_path().string();
+        std::string file_name = path.filename().string();
+        std::string module_name = file_name.substr(0, file_name.find_last_of("."));
+
+        // Add module directory to sys.path
+        py::module_ sys = py::module_::import("sys");
+        py::object append = sys.attr("path").attr("append");
+        append(module_dir);
+        py::object pyProcessorClass = py::module_::import(module_name.c_str()).attr("PyProcessor");
+
+        LOGC("Successfully imported ", module_name);
+
+        // Make processor object
+        pyProcessorObject = pyProcessorClass();
+
+        isActive = true;
+        return true;
+    }
+
+    catch (std::exception& exc)
+    {
+        LOGC("Failed to import Python module.");
+        isActive = false;
+        return false;
+    }
 
 }
