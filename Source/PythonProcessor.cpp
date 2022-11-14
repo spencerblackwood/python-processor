@@ -62,38 +62,41 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
 
     py::gil_scoped_acquire acquire;
 
-    for (auto stream : getDataStreams())
+    if (isActive)
     {
-
-        if ((*stream)["enable_stream"])
+        for (auto stream : getDataStreams())
         {
 
-            const uint16 streamId = stream->getStreamId();
+            if ((*stream)["enable_stream"])
+            {
 
-            const int numSamples = getNumSamplesInBlock(streamId);
-            const int numChannels = stream->getChannelCount();
+                const uint16 streamId = stream->getStreamId();
 
-            py::array_t<float> numpyArray = py::array_t<float>({ numChannels, numSamples });
+                const int numSamples = getNumSamplesInBlock(streamId);
+                const int numChannels = stream->getChannelCount();
 
-            // Read into numpy array
-            for (int i = 0; i < numChannels; ++i) {
-                int globalChannelIndex = getGlobalChannelIndex(stream->getStreamId(), i);
+                py::array_t<float> numpyArray = py::array_t<float>({ numChannels, numSamples });
 
-                const float* bufferChannelPtr = buffer.getReadPointer(globalChannelIndex);
-                float* numpyChannelPtr = numpyArray.mutable_data(i, 0);
-                memcpy(numpyChannelPtr, bufferChannelPtr, sizeof(float) * numSamples);
-            }
+                // Read into numpy array
+                for (int i = 0; i < numChannels; ++i) {
+                    int globalChannelIndex = getGlobalChannelIndex(stream->getStreamId(), i);
 
-            // Call python script
-            pyProcessorObject.attr("process")(numpyArray);
+                    const float* bufferChannelPtr = buffer.getReadPointer(globalChannelIndex);
+                    float* numpyChannelPtr = numpyArray.mutable_data(i, 0);
+                    memcpy(numpyChannelPtr, bufferChannelPtr, sizeof(float) * numSamples);
+                }
 
-            // Write from numpy array?
-            for (int i = 0; i < numChannels; ++i) {
-                int globalChannelIndex = getGlobalChannelIndex(stream->getStreamId(), i);
+                // Call python script
+                pyProcessorObject.attr("process")(numpyArray);
 
-                float* bufferChannelPtr = buffer.getWritePointer(globalChannelIndex);
-                const float* numpyChannelPtr = numpyArray.data(i, 0);
-                memcpy(bufferChannelPtr, numpyChannelPtr, sizeof(float) * numSamples);
+                // Write from numpy array?
+                for (int i = 0; i < numChannels; ++i) {
+                    int globalChannelIndex = getGlobalChannelIndex(stream->getStreamId(), i);
+
+                    float* bufferChannelPtr = buffer.getWritePointer(globalChannelIndex);
+                    const float* numpyChannelPtr = numpyArray.data(i, 0);
+                    memcpy(bufferChannelPtr, numpyChannelPtr, sizeof(float) * numSamples);
+                }
             }
         }
     }
