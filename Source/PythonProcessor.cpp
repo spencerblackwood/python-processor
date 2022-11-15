@@ -21,7 +21,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include <filesystem>
-#include <pybind11/numpy.h>
 
 #include "PythonProcessor.h"
 #include "PythonProcessorEditor.h"
@@ -134,15 +133,23 @@ void PythonProcessor::loadCustomParametersFromXml(XmlElement* parentElement)
 
 bool PythonProcessor::startAcquisition() 
 {
-    py::gil_scoped_acquire acquire;
-    pyProcessorObject.attr("start_acquisition")();
-    return true;
+    if (isActive)
+    {
+        py::gil_scoped_acquire acquire;
+        pyProcessorObject.attr("start_acquisition")();
+        return true;
+    }
+    return false;
 }
 
 bool PythonProcessor::stopAcquisition() {
-    py::gil_scoped_acquire acquire;
-    pyProcessorObject.attr("stop_acquisition")();
-    return true;
+    if (isActive)
+    {
+        py::gil_scoped_acquire acquire;
+        pyProcessorObject.attr("stop_acquisition")();
+        return true;
+    }
+    return false;
 }
 
 void PythonProcessor::setScriptPath(String path)
