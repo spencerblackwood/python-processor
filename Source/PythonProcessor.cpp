@@ -34,7 +34,9 @@ PythonProcessor::PythonProcessor()
     : GenericProcessor("Python Processor")
 {
     scriptPath = "";
-    isActive = false;
+    moduleReady = false;
+
+    addStringParameter(Parameter::GLOBAL_SCOPE, "script_path", "Path to python script", String());
 }
 
 PythonProcessor::~PythonProcessor()
@@ -46,13 +48,18 @@ PythonProcessor::~PythonProcessor()
 AudioProcessorEditor* PythonProcessor::createEditor()
 {
     editor = std::make_unique<PythonProcessorEditor>(this);
+    editorPtr = (PythonProcessorEditor*) editor.get();
     return editor.get();
 }
 
 
 void PythonProcessor::updateSettings()
 {
-    importModule();
+    if (moduleReady)
+    {
+        py::gil_scoped_acquire acquire;
+        pyObject = pyClass();
+    }
 }
 
 void PythonProcessor::process(AudioBuffer<float>& buffer)
@@ -61,7 +68,7 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
 
     py::gil_scoped_acquire acquire;
 
-    if (isActive)
+    if (moduleReady)
     {
         for (auto stream : getDataStreams())
         {
@@ -86,7 +93,7 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
                 }
 
                 // Call python script
-                pyProcessorObject.attr("process")(numpyArray);
+                pyObject.attr("process")(numpyArray);
 
                 // Write from numpy array?
                 for (int i = 0; i < numChannels; ++i) {
@@ -133,28 +140,33 @@ void PythonProcessor::loadCustomParametersFromXml(XmlElement* parentElement)
 
 bool PythonProcessor::startAcquisition() 
 {
-    if (isActive)
+    if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyProcessorObject.attr("start_acquisition")();
+        pyObject.attr("start_acquisition")();
         return true;
     }
     return false;
 }
 
 bool PythonProcessor::stopAcquisition() {
-    if (isActive)
+    if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyProcessorObject.attr("stop_acquisition")();
+        pyObject.attr("stop_acquisition")();
         return true;
     }
     return false;
 }
 
-void PythonProcessor::setScriptPath(String path)
+void PythonProcessor::parameterValueChanged(Parameter* param)
 {
-    scriptPath = path;
+    if (param->getName().equalsIgnoreCase("script_path")) 
+    {
+        scriptPath = param->getValueAsString();
+        importModule();
+        updateSettings();
+    }
 }
 
 
@@ -170,6 +182,8 @@ bool PythonProcessor::importModule()
 
     LOGC("Importing Python module from ", scriptPath.toRawUTF8());
 
+    editorPtr->setPathLabelText("Importing");
+
     try
     {
         // Get module info (change to get from editor)
@@ -182,22 +196,21 @@ bool PythonProcessor::importModule()
         py::module_ sys = py::module_::import("sys");
         py::object append = sys.attr("path").attr("append");
         append(module_dir);
-        py::object pyProcessorClass = py::module_::import(module_name.c_str()).attr("PyProcessor");
+        pyClass = py::module_::import(module_name.c_str()).attr("PyProcessor");
 
         LOGC("Successfully imported ", module_name);
 
-        // Make processor object
-        pyProcessorObject = pyProcessorClass();
-
-        isActive = true;
+        editorPtr->setPathLabelText(module_name);
+        moduleReady = true;
         return true;
     }
 
     catch (std::exception& exc)
     {
         LOGC("Failed to import Python module.");
-        isActive = false;
+
+        editorPtr->setPathLabelText("No Module Loaded");
+        moduleReady = false;
         return false;
     }
-
 }

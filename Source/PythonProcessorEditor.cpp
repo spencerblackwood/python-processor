@@ -23,9 +23,38 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "PythonProcessorEditor.h"
 #include "PythonProcessor.h"
 
+ScriptPathButton::ScriptPathButton(Parameter* param) : ParameterEditor(param)
+{
+	utilButton = std::make_unique<UtilityButton>("...", Font(12));
+	utilButton->addListener(this);
+	addAndMakeVisible(utilButton.get());
+
+	setBounds(0, 0, 20, 20);
+}
+
+
+void ScriptPathButton::buttonClicked(Button* label)
+{
+	FileChooser chooseScriptDirectory("Please select a python script...", File(CoreServices::getDefaultUserSaveDirectory()), "*.py");
+
+	if (chooseScriptDirectory.browseForFileToOpen())
+	{
+		param->setNextValue(chooseScriptDirectory.getResult().getFullPathName());
+	}
+}
+
+void ScriptPathButton::resized()
+{
+	utilButton->setBounds(0, 0, 20, 20);
+
+}
+
+
+
 PythonProcessorEditor::PythonProcessorEditor(PythonProcessor* parentNode) 
     : GenericEditor(parentNode)
 {
+	// Set ptr to parent
 	pythonProcessor = parentNode;
 
     desiredWidth = 200;
@@ -40,10 +69,8 @@ PythonProcessorEditor::PythonProcessorEditor(PythonProcessor* parentNode)
 	scriptPathLabel->setJustificationType(Justification::centredLeft);
 	addAndMakeVisible(scriptPathLabel);
 
-	scriptPathButton = new UtilityButton("...", Font(12));
-	scriptPathButton->setBounds(162, 35, 18, 20);
-	scriptPathButton->addListener(this);
-	addAndMakeVisible(scriptPathButton);
+	Parameter* scriptPathPtr = getProcessor()->getParameter("script_path");
+	addCustomParameterEditor(new ScriptPathButton(scriptPathPtr), 162, 35);
 
 	reimportButton = new UtilityButton("Reimport", Font(12));
 	reimportButton->setBounds(60, 80, 80, 30);
@@ -54,38 +81,18 @@ PythonProcessorEditor::PythonProcessorEditor(PythonProcessor* parentNode)
 
 void PythonProcessorEditor::buttonClicked(Button* button)
 {
-	if (button == scriptPathButton)
-	{
-		FileChooser chooseScriptDirectory("Please select the python script...", File(CoreServices::getDefaultUserSaveDirectory()), "*.py");
-
-		if (chooseScriptDirectory.browseForFileToOpen())
-		{
-			String new_path = chooseScriptDirectory.getResult().getFullPathName();
-
-			
-			pythonProcessor->setScriptPath(new_path);
-			scriptPathLabel->setText("Importing", juce::NotificationType::dontSendNotification);
-
-			bool success = pythonProcessor->importModule();
-			scriptPathLabel->setTooltip(new_path);
-
-			if (success)
-			{
-				String file_name = new_path.fromLastOccurrenceOf("\\", false, false);
-
-				scriptPathLabel->setText(file_name, juce::NotificationType::dontSendNotification);
-			}
-			else
-			{
-				scriptPathLabel->setText("No Module Loaded", juce::NotificationType::dontSendNotification);
-			}
-		}
-	}
 
 	if (button == reimportButton)
 	{
 		pythonProcessor->importModule();
 	}
 
-
 }
+
+void PythonProcessorEditor::setPathLabelText(String s)
+{
+	scriptPathLabel->setText(s, dontSendNotification);
+	scriptPathLabel->setTooltip(s);
+}
+
+

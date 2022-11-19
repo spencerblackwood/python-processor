@@ -49,8 +49,10 @@ public:
 	void resized() override;
 
 private:
-	std::unique_ptr<TextButton> triggerButton;
+	std::unique_ptr<UtilityButton> utilButton;
 };
+
+
 
 class PythonProcessorEditor :
 	public GenericEditor,
@@ -67,7 +69,11 @@ public:
 	/** Respond to button clicks*/
 	void buttonClicked(Button* button);
 
+	/** Sets the text of the path label */
+	void setPathLabelText(String);
+
 private:
+
 	PythonProcessor* pythonProcessor;
 
 	ScopedPointer<Label> scriptPathLabel;

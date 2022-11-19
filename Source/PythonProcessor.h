@@ -27,20 +27,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <pybind11/embed.h>
 #include <pybind11/numpy.h>
 
+#include "PythonProcessorEditor.h"
+
 namespace py = pybind11;
 
 class PythonProcessor : public GenericProcessor
 {
 
 private:
+
+	/** Custom python class definition */
+	py::object pyClass;
+
 	/** Instance of user-defined python class*/
-	py::object pyProcessorObject;
+	py::object pyObject;
 
 	/** String file path to python script */
 	String scriptPath;
 
 	/** True if there is an active module loaded */
-	bool isActive;
+	bool moduleReady;
+
+	/** Pointer to editor */
+	PythonProcessorEditor* editorPtr;
 
 
 public:
@@ -92,8 +101,8 @@ public:
 	/** Called when acquisition is stopped.*/
 	bool stopAcquisition() override;
 
-	/** Sets the file path of the python Script */
-	void setScriptPath(String);
+	/** Called whenever a parameter's value is changed */
+	void parameterValueChanged(Parameter* param) override;
 
 	/** Imports the python script from scriptPath and rebuilds the processor object. Returns false
 		if the import fails*/
