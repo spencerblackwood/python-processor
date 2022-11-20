@@ -36,11 +36,14 @@ class PythonProcessor : public GenericProcessor
 
 private:
 
-	/** Custom python class definition */
-	py::object pyClass;
+	/** Manage all python objects with raw pointers, so they
+	can be explicitly deleted with the GIL held*/
+
+	/** Custom python module */
+	py::module_* pyModule;
 
 	/** Instance of user-defined python class*/
-	py::object pyObject;
+	py::object* pyObject;
 
 	/** String file path to python script */
 	String scriptPath;
@@ -107,6 +110,9 @@ public:
 	/** Imports the python script from scriptPath and rebuilds the processor object. Returns false
 		if the import fails*/
 	bool importModule();
+
+	/** Reloads the current python module if one is loaded */
+	void reload();
 
 };
 

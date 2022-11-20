@@ -72,7 +72,7 @@ PythonProcessorEditor::PythonProcessorEditor(PythonProcessor* parentNode)
 	Parameter* scriptPathPtr = getProcessor()->getParameter("script_path");
 	addCustomParameterEditor(new ScriptPathButton(scriptPathPtr), 162, 35);
 
-	reimportButton = new UtilityButton("Reimport", Font(12));
+	reimportButton = new UtilityButton("Reload", Font(12));
 	reimportButton->setBounds(60, 80, 80, 30);
 	reimportButton->addListener(this);
 	addAndMakeVisible(reimportButton);
@@ -84,7 +84,8 @@ void PythonProcessorEditor::buttonClicked(Button* button)
 
 	if (button == reimportButton)
 	{
-		pythonProcessor->importModule();
+		pythonProcessor->reload();
+		pythonProcessor->updateSettings();
 	}
 
 }

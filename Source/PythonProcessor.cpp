@@ -27,21 +27,29 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace py = pybind11;
 
+
 py::scoped_interpreter guard{};
 py::gil_scoped_release release;
+
 
 PythonProcessor::PythonProcessor()
     : GenericProcessor("Python Processor")
 {
-    scriptPath = "";
+    pyModule = NULL;
+    pyObject = NULL;
     moduleReady = false;
+    scriptPath = "";
+    editorPtr = NULL;
 
     addStringParameter(Parameter::GLOBAL_SCOPE, "script_path", "Path to python script", String());
 }
 
 PythonProcessor::~PythonProcessor()
 {
+    py::gil_scoped_acquire acquire;
 
+    delete pyModule;
+    delete pyObject;
 }
 
 
@@ -58,7 +66,12 @@ void PythonProcessor::updateSettings()
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyObject = pyClass();
+        if (pyObject) 
+        {
+            delete pyObject;
+            pyObject = NULL;
+        }
+        pyObject = new py::object(pyModule->attr("PyProcessor")());
     }
 }
 
@@ -66,10 +79,11 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
 {
     checkForEvents(true);
 
-    py::gil_scoped_acquire acquire;
 
     if (moduleReady)
     {
+        py::gil_scoped_acquire acquire;
+
         for (auto stream : getDataStreams())
         {
 
@@ -96,7 +110,7 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
                     }
 
                     // Call python script
-                    pyObject.attr("process")(numpyArray);
+                    pyObject->attr("process")(numpyArray);
 
 
                     // Write from numpy array?
@@ -149,7 +163,7 @@ bool PythonProcessor::startAcquisition()
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyObject.attr("start_acquisition")();
+        pyObject->attr("start_acquisition")();
         return true;
     }
     return false;
@@ -159,7 +173,7 @@ bool PythonProcessor::stopAcquisition() {
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyObject.attr("stop_acquisition")();
+        pyObject->attr("stop_acquisition")();
         return true;
     }
     return false;
@@ -184,25 +198,32 @@ bool PythonProcessor::importModule()
         return false;
     }
 
-    py::gil_scoped_acquire acquire;
-
     LOGC("Importing Python module from ", scriptPath.toRawUTF8());
-
-    editorPtr->setPathLabelText("Importing");
 
     try
     {
+        py::gil_scoped_acquire acquire;
+
+        // Clear for new class
+        if (pyModule)
+        {
+            delete pyModule;
+            pyModule = NULL;
+        }
+
         // Get module info (change to get from editor)
         std::filesystem::path path(scriptPath.toRawUTF8());
         std::string module_dir = path.parent_path().string();
         std::string file_name = path.filename().string();
         std::string module_name = file_name.substr(0, file_name.find_last_of("."));
+        
 
         // Add module directory to sys.path
         py::module_ sys = py::module_::import("sys");
         py::object append = sys.attr("path").attr("append");
         append(module_dir);
-        pyClass = py::module_::import(module_name.c_str()).attr("PyProcessor");
+
+        pyModule = new py::module_(py::module_::import(module_name.c_str()));
 
         LOGC("Successfully imported ", module_name);
 
@@ -218,5 +239,21 @@ bool PythonProcessor::importModule()
         editorPtr->setPathLabelText("No Module Loaded");
         moduleReady = false;
         return false;
+    }
+}
+
+void PythonProcessor::reload() 
+{
+    py::gil_scoped_acquire acquire;
+
+    if (moduleReady)
+    {
+        LOGC("Reloading module...");
+        pyModule->reload();
+        LOGC("Module successfully reloaded");
+    }
+    else 
+    {
+        LOGC("There is no module to reload");
     }
 }
