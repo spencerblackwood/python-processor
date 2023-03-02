@@ -45,10 +45,13 @@ private:
 	/** Instance of user-defined python class*/
 	py::object* pyObject;
 
-	/** String file path to python script */
+	/** File path to python script */
 	String scriptPath;
 
-	/** True if there is an active module loaded */
+	/** Name of module */
+	std::string moduleName;
+
+	/** True if there is an module loaded with no exceptions*/
 	bool moduleReady;
 
 	/** Pointer to editor */

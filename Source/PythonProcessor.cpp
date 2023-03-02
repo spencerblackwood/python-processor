@@ -20,6 +20,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+
 #include <filesystem>
 
 #include "PythonProcessor.h"
@@ -39,6 +41,7 @@ PythonProcessor::PythonProcessor()
     pyObject = NULL;
     moduleReady = false;
     scriptPath = "";
+    moduleName = "";
     editorPtr = NULL;
 
     addStringParameter(Parameter::GLOBAL_SCOPE, "script_path", "Path to python script", String());
@@ -63,15 +66,40 @@ AudioProcessorEditor* PythonProcessor::createEditor()
 
 void PythonProcessor::updateSettings()
 {
+
+    int numContinuousChannels = continuousChannels.size();
+    // int numEventChannels = eventChannels.size();
+    // int numSpikeChannels = spikeChannels.size();
+
+    float sampleRate;
+    if (numContinuousChannels > 0)
+    {
+        // just take the sample rate of the first channel for now
+        sampleRate = continuousChannels.getFirst()->getSampleRate();
+    }
+    else 
+    {
+        sampleRate = 0;
+    }
+
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        if (pyObject) 
+        if (pyObject)
         {
             delete pyObject;
             pyObject = NULL;
         }
-        pyObject = new py::object(pyModule->attr("PyProcessor")());
+
+        try {
+            pyObject = new py::object(pyModule->attr("PyProcessor")(numContinuousChannels, sampleRate));
+        }
+
+        catch (py::error_already_set& e) {
+            LOGC("Python Exception:\n", e.what());
+            moduleReady = false;
+            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+        }
     }
 }
 
@@ -109,8 +137,16 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
                         memcpy(numpyChannelPtr, bufferChannelPtr, sizeof(float) * numSamples);
                     }
 
-                    // Call python script
-                    pyObject->attr("process")(numpyArray);
+                    // Call python script on this block
+
+                    try {
+                        pyObject->attr("process")(numpyArray);
+                    }
+                    catch (py::error_already_set& e) {
+                        LOGC("Python Exception:\n", e.what());
+                        moduleReady = false;
+                        editorPtr->setPathLabelText("(ERROR) " + moduleName);
+                    }
 
 
                     // Write from numpy array?
@@ -128,16 +164,40 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
     }
 }
 
-
 void PythonProcessor::handleTTLEvent(TTLEventPtr event)
 {
+    // Get ttl info
+    const int state = event->getState() ? 1 : 0;
+    const int64 sampleNumber = event->getSampleNumber();
+    const int channel = event->getChannelIndex();
+    const uint8 line = event->getLine();
+    const uint16 streamId = event->getStreamId();
 
+    // Give to python
+    py::gil_scoped_acquire acquire;
+
+    try {
+        pyObject->attr("handle_ttl_event")(state, sampleNumber, channel, line, streamId);
+    }
+    catch (py::error_already_set& e) {
+        LOGC("Python Exception:\n", e.what());
+        moduleReady = false;
+        editorPtr->setPathLabelText("(ERROR) " + moduleName);
+    }
 }
 
 
 void PythonProcessor::handleSpike(SpikePtr event)
 {
-
+    py::gil_scoped_acquire acquire;
+    try {
+        pyObject->attr("handle_spike_event")();
+    }
+    catch (py::error_already_set& e) {
+        LOGC("Python Exception:\n", e.what());
+        moduleReady = false;
+        editorPtr->setPathLabelText("(ERROR) " + moduleName);
+    }
 }
 
 
@@ -163,7 +223,14 @@ bool PythonProcessor::startAcquisition()
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyObject->attr("start_acquisition")();
+        try {
+            pyObject->attr("start_acquisition")();
+        }
+        catch (py::error_already_set& e) {
+            LOGC("Python Exception:\n", e.what());
+            moduleReady = false;
+            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+        }
         return true;
     }
     return false;
@@ -173,7 +240,14 @@ bool PythonProcessor::stopAcquisition() {
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
-        pyObject->attr("stop_acquisition")();
+        try {
+            pyObject->attr("stop_acquisition")();
+        }
+        catch (py::error_already_set& e) {
+            LOGC("Python Exception:\n", e.what());
+            moduleReady = false;
+            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+        }
         return true;
     }
     return false;
@@ -213,21 +287,21 @@ bool PythonProcessor::importModule()
 
         // Get module info (change to get from editor)
         std::filesystem::path path(scriptPath.toRawUTF8());
-        std::string module_dir = path.parent_path().string();
-        std::string file_name = path.filename().string();
-        std::string module_name = file_name.substr(0, file_name.find_last_of("."));
+        std::string moduleDir = path.parent_path().string();
+        std::string fileName = path.filename().string();
+        moduleName = fileName.substr(0, fileName.find_last_of("."));
         
 
         // Add module directory to sys.path
         py::module_ sys = py::module_::import("sys");
         py::object append = sys.attr("path").attr("append");
-        append(module_dir);
+        append(moduleDir);
 
-        pyModule = new py::module_(py::module_::import(module_name.c_str()));
+        pyModule = new py::module_(py::module_::import(moduleName.c_str()));
 
-        LOGC("Successfully imported ", module_name);
+        LOGC("Successfully imported ", moduleName);
 
-        editorPtr->setPathLabelText(module_name);
+        editorPtr->setPathLabelText(moduleName);
         moduleReady = true;
         return true;
     }
@@ -246,11 +320,23 @@ void PythonProcessor::reload()
 {
     py::gil_scoped_acquire acquire;
 
-    if (moduleReady)
+    if (pyModule)
     {
         LOGC("Reloading module...");
-        pyModule->reload();
+        try
+        {
+            pyModule->reload();
+        }
+        catch (std::exception& exc) {
+            LOGC("Failed to reload module.")
+            moduleReady = false;
+            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+            return;
+        }
+        
         LOGC("Module successfully reloaded");
+        moduleReady = true;
+        editorPtr->setPathLabelText(moduleName);
     }
     else 
     {
