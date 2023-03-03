@@ -71,16 +71,7 @@ void PythonProcessor::updateSettings()
     // int numEventChannels = eventChannels.size();
     // int numSpikeChannels = spikeChannels.size();
 
-    float sampleRate;
-    if (numContinuousChannels > 0)
-    {
-        // just take the sample rate of the first channel for now
-        sampleRate = continuousChannels.getFirst()->getSampleRate();
-    }
-    else 
-    {
-        sampleRate = 0;
-    }
+    float sampleRate = continuousChannels.getFirst()->getSampleRate();
 
     if (moduleReady)
     {
@@ -96,9 +87,7 @@ void PythonProcessor::updateSettings()
         }
 
         catch (py::error_already_set& e) {
-            LOGC("Python Exception:\n", e.what());
-            moduleReady = false;
-            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+            handlePythonException(e);
         }
     }
 }
@@ -143,9 +132,7 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
                         pyObject->attr("process")(numpyArray);
                     }
                     catch (py::error_already_set& e) {
-                        LOGC("Python Exception:\n", e.what());
-                        moduleReady = false;
-                        editorPtr->setPathLabelText("(ERROR) " + moduleName);
+                        handlePythonException(e);
                     }
 
 
@@ -180,9 +167,7 @@ void PythonProcessor::handleTTLEvent(TTLEventPtr event)
         pyObject->attr("handle_ttl_event")(state, sampleNumber, channel, line, streamId);
     }
     catch (py::error_already_set& e) {
-        LOGC("Python Exception:\n", e.what());
-        moduleReady = false;
-        editorPtr->setPathLabelText("(ERROR) " + moduleName);
+        handlePythonException(e);
     }
 }
 
@@ -194,9 +179,7 @@ void PythonProcessor::handleSpike(SpikePtr event)
         pyObject->attr("handle_spike_event")();
     }
     catch (py::error_already_set& e) {
-        LOGC("Python Exception:\n", e.what());
-        moduleReady = false;
-        editorPtr->setPathLabelText("(ERROR) " + moduleName);
+        handlePythonException(e);
     }
 }
 
@@ -223,13 +206,12 @@ bool PythonProcessor::startAcquisition()
     if (moduleReady)
     {
         py::gil_scoped_acquire acquire;
+
         try {
             pyObject->attr("start_acquisition")();
         }
         catch (py::error_already_set& e) {
-            LOGC("Python Exception:\n", e.what());
-            moduleReady = false;
-            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+            handlePythonException(e);
         }
         return true;
     }
@@ -244,14 +226,38 @@ bool PythonProcessor::stopAcquisition() {
             pyObject->attr("stop_acquisition")();
         }
         catch (py::error_already_set& e) {
-            LOGC("Python Exception:\n", e.what());
-            moduleReady = false;
-            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+            handlePythonException(e);
         }
         return true;
     }
     return false;
 }
+
+void PythonProcessor::startRecording() {
+    String recordingDirectory = CoreServices::getRecordingDirectoryName();
+
+    py::gil_scoped_acquire acquire;
+    try {
+        pyObject->attr("start_recording")(recordingDirectory.toRawUTF8());
+    }
+    catch (py::error_already_set& e) {
+        handlePythonException(e);
+    }
+}
+
+
+
+void PythonProcessor::stopRecording() {
+    py::gil_scoped_acquire acquire;
+    try {
+        pyObject->attr("stop_recording")();
+    }
+    catch (py::error_already_set& e) {
+        handlePythonException(e);
+    }
+}
+
+
 
 void PythonProcessor::parameterValueChanged(Parameter* param)
 {
@@ -309,6 +315,7 @@ bool PythonProcessor::importModule()
     catch (std::exception& exc)
     {
         LOGC("Failed to import Python module.");
+        LOGC(exc.what());
 
         editorPtr->setPathLabelText("No Module Loaded");
         moduleReady = false;
@@ -327,10 +334,8 @@ void PythonProcessor::reload()
         {
             pyModule->reload();
         }
-        catch (std::exception& exc) {
-            LOGC("Failed to reload module.")
-            moduleReady = false;
-            editorPtr->setPathLabelText("(ERROR) " + moduleName);
+        catch (py::error_already_set& e) {
+            handlePythonException(e);
             return;
         }
         
@@ -342,4 +347,11 @@ void PythonProcessor::reload()
     {
         LOGC("There is no module to reload");
     }
+}
+
+void PythonProcessor::handlePythonException(py::error_already_set e)
+{
+    LOGC("Python Exception:\n", e.what());
+    moduleReady = false;
+    editorPtr->setPathLabelText("(ERROR) " + moduleName);
 }

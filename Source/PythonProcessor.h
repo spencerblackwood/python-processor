@@ -107,6 +107,12 @@ public:
 	/** Called when acquisition is stopped.*/
 	bool stopAcquisition() override;
 
+	/** Called when recording starts */
+	void startRecording() override;
+
+	/** Called when recording stops */
+	void stopRecording() override;
+
 	/** Called whenever a parameter's value is changed */
 	void parameterValueChanged(Parameter* param) override;
 
@@ -116,6 +122,9 @@ public:
 
 	/** Reloads the current python module if one is loaded */
 	void reload();
+
+	/** Deals with python exceptions (print and turn off module for now) */
+	void handlePythonException(py::error_already_set e);
 
 };
 
