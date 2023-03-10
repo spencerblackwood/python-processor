@@ -4,7 +4,7 @@ A plugin for adding custom Python scripts to the [Open Ephys GUI](https://github
 
 ## Build Notes
 
-So far the build process has only been tested on Windows. The plugin uses (https://pybind11.readthedocs.io/en/stable/)[pybind11] to call Python functions from the GUI. Right now it seems to require a version of Python be available on the Windows PATH variable at compile time and at run time. Modules available in sys.path can be imported.
+So far the build process has only been tested on Windows. The plugin uses [pybind11](https://pybind11.readthedocs.io/en/stable/) to call Python functions from the GUI. Right now it seems to require a version of Python be available on the Windows PATH variable at compile time and at run time. Modules available in sys.path can be imported.
 
 ## Usage
 
