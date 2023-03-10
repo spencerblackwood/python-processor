@@ -71,7 +71,11 @@ void PythonProcessor::updateSettings()
     // int numEventChannels = eventChannels.size();
     // int numSpikeChannels = spikeChannels.size();
 
-    float sampleRate = continuousChannels.getFirst()->getSampleRate();
+    float sampleRate = 0;
+    if (numContinuousChannels > 0) {
+        sampleRate = continuousChannels.getFirst()->getSampleRate();
+    }
+    
 
     if (moduleReady)
     {
