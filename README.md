@@ -8,7 +8,7 @@ So far the build process has only been tested on Windows. The plugin uses [pybin
 
 ## Usage
 
-You must have numpy installed and available on sys.path in order to run the processor. Each plugin node creates an instance of a user-defined Python class named PyProcessor. Edit the template available in the Modules folder in this repo, then load the .py module using the file dialog in the plugin node. The reload button will reimport the module if you have edited the module.
+You must have numpy installed and available on sys.path in order to run the processor. Each plugin node creates an instance of a user-defined Python class named PyProcessor. Edit the template available in the Modules folder in this repo, then load the .py module using the file dialog in the plugin node. The reload button will reimport the module if you make edits.
 
 
 
