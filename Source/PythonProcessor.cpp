@@ -66,6 +66,7 @@ AudioProcessorEditor* PythonProcessor::createEditor()
 
 void PythonProcessor::updateSettings()
 {
+    addTTLChannel("Python Processor Output");
 
     int numContinuousChannels = continuousChannels.size();
     // int numEventChannels = eventChannels.size();
@@ -130,13 +131,27 @@ void PythonProcessor::process(AudioBuffer<float>& buffer)
                         memcpy(numpyChannelPtr, bufferChannelPtr, sizeof(float) * numSamples);
                     }
 
-                    // Call python script on this block
 
+                    py::list events = py::list();
+
+                    // Call python script on this block
                     try {
-                        pyObject->attr("process")(numpyArray);
+                        events = pyObject->attr("process")(numpyArray);
                     }
                     catch (py::error_already_set& e) {
                         handlePythonException(e);
+                    }
+
+                    // Cast python event and set TTL state
+                    for (int i=0; i<events.size() ; i++) {
+                        py::tuple event = events[i];
+                        int sampleIndex = event[0].cast<int>();
+                        int lineIndex = event[1].cast<int>();
+                        bool state = event[2].cast<bool>();
+
+                        setTTLState(sampleIndex, lineIndex, state);
+
+                        LOGD("Generating event at sample ", sampleIndex, ", line ", lineIndex, " state ", state);
                     }
 
 
@@ -188,6 +203,7 @@ void PythonProcessor::handleSpike(SpikePtr event)
 }
 
 
+
 void PythonProcessor::handleBroadcastMessage(String message)
 {
 
@@ -222,6 +238,7 @@ bool PythonProcessor::startAcquisition()
     return false;
 }
 
+
 bool PythonProcessor::stopAcquisition() {
     if (moduleReady)
     {
@@ -236,6 +253,7 @@ bool PythonProcessor::stopAcquisition() {
     }
     return false;
 }
+
 
 void PythonProcessor::startRecording() {
     String recordingDirectory = CoreServices::getRecordingDirectoryName();

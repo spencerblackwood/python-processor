@@ -6,9 +6,11 @@ class PyProcessor:
     def __init__(self, num_channels, sample_rate):
         pass
     
-    # Process each data buffer. Data is a numpy array.
+    # Process each data buffer. Data is a numpy array. Return events as an array of (sample, line, state) tuples
     def process(self, data):
-        pass
+
+        # example: return [(0,0,True), (100,0,False)]
+        return []
         
     # Called at start of acquisition
     def start_acquisition(self):
