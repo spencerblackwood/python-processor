@@ -1,5 +1,9 @@
 # Python Processor
 
+**THIS BRANCH IS NO LONGER SUPPORTED. SEE THE OFFICIAL FORK HERE:** 
+https://github.com/open-ephys-plugins/python-processor
+
+
 A plugin for adding custom Python scripts to the [Open Ephys GUI](https://github.com/open-ephys/plugin-GUI) signal chain. 
 
 ## Build Notes
